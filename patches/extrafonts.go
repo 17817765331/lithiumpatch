@@ -22,14 +22,20 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 		return nil
 	}
 	var pt []Instruction
-	// 不再需要写入字体文件到APK，因为要从外部加载
-	// for _, f := range xs {
-	//     if f.Regular != nil {
-	//         pt = append(pt, WriteFile("assets/fonts/"+f.Base+"-Regular.ttf", f.Regular))
-	//     }
-	//     ...
-	// }
-	
+	for _, f := range xs {
+		if f.Regular != nil {
+			pt = append(pt, WriteFile("assets/fonts/"+f.Base+"-Regular.ttf", f.Regular))
+		}
+		if f.Bold != nil {
+			pt = append(pt, WriteFile("assets/fonts/"+f.Base+"-Bold.ttf", f.Bold))
+		}
+		if f.Italic != nil {
+			pt = append(pt, WriteFile("assets/fonts/"+f.Base+"-Italic.ttf", f.Italic))
+		}
+		if f.BoldItalic != nil {
+			pt = append(pt, WriteFile("assets/fonts/"+f.Base+"-BoldItalic.ttf", f.BoldItalic))
+		}
+	}
 	pt = append(pt, PatchFile("smali/com/faultexception/reader/fonts/Fonts.smali",
 		InMethod("<clinit>()V",
 			ReplaceStringAppend(
@@ -54,71 +60,22 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 				{{range .}}
 				const-string v1, "{{.Name}}"
 				{{if .Regular -}}
-				# 修改：从外部存储加载字体
-				new-instance v2, Ljava/lang/StringBuilder;
-				invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
-				invoke-static {}, Landroid/os/Environment;->getExternalStorageDirectory()Ljava/io/File;
-				move-result-object v3
-				invoke-virtual {v3}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-				move-result-object v3
-				invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v2
-				const-string v3, "/Lithium/fonts/{{.Base}}-Regular.ttf"
-				invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v2
-				invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-				move-result-object v2
+				const-string v2, "{{.Base}}-Regular.ttf"
 				{{- else -}}
 				const/4 v2, 0x0
 				{{- end}}
 				{{if .Bold -}}
-				new-instance v3, Ljava/lang/StringBuilder;
-				invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
-				invoke-static {}, Landroid/os/Environment;->getExternalStorageDirectory()Ljava/io/File;
-				move-result-object v4
-				invoke-virtual {v4}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-				move-result-object v4
-				invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v3
-				const-string v4, "/Lithium/fonts/{{.Base}}-Bold.ttf"
-				invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v3
-				invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-				move-result-object v3
+				const-string v3, "{{.Base}}-Bold.ttf"
 				{{- else -}}
 				const/4 v3, 0x0
 				{{- end}}
 				{{if .Italic -}}
-				new-instance v4, Ljava/lang/StringBuilder;
-				invoke-direct {v4}, Ljava/lang/StringBuilder;-><init>()V
-				invoke-static {}, Landroid/os/Environment;->getExternalStorageDirectory()Ljava/io/File;
-				move-result-object v5
-				invoke-virtual {v5}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-				move-result-object v5
-				invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v4
-				const-string v5, "/Lithium/fonts/{{.Base}}-Italic.ttf"
-				invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v4
-				invoke-virtual {v4}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-				move-result-object v4
+				const-string v4, "{{.Base}}-Italic.ttf"
 				{{- else -}}
 				const/4 v4, 0x0
 				{{- end}}
 				{{if .BoldItalic -}}
-				new-instance v5, Ljava/lang/StringBuilder;
-				invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
-				invoke-static {}, Landroid/os/Environment;->getExternalStorageDirectory()Ljava/io/File;
-				move-result-object v6
-				invoke-virtual {v6}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-				move-result-object v6
-				invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v5
-				const-string v6, "/Lithium/fonts/{{.Base}}-BoldItalic.ttf"
-				invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				move-result-object v5
-				invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-				move-result-object v5
+				const-string v5, "{{.Base}}-BoldItalic.ttf"
 				{{- else -}}
 				const/4 v5, 0x0
 				{{- end}}
@@ -132,7 +89,6 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 			.end method
 			`, xs)),
 		),
-		// 保留原有的字体兼容性方法
 		InMethod("getCompatibleFonts(Ljava/lang/String;)Ljava/util/List;",
 			ReplaceWith(
 				FixIndent(ExecuteTemplate("\n"+`
