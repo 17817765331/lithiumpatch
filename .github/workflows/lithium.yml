@@ -27,8 +27,6 @@ jobs:
         if: env.KEYSTORE_BASE64
       - name: Download app
         run: go generate ./app
-      - name: Download dictionaries
-        continue-on-error: true
       - name: Patch app
         run: go run . app/*.apk
       - uses: actions/upload-artifact@v4
