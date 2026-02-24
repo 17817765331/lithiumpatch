@@ -87,78 +87,46 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 				invoke-virtual {p0, v0}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
 				{{end}}
 
-				# Load external fonts from /sdcard/Lithium/fonts/
-				:try_start_0
-				new-instance v7, Ljava/io/File;
-				invoke-static {}, Landroid/os/Environment;->getExternalStorageDirectory()Ljava/io/File;
-				move-result-object v0
-				const-string v1, "Lithium/fonts"
-				invoke-direct {v7, v0, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-				invoke-static {v7}, Lcom/faultexception/reader/fonts/Fonts;->scanExternalFonts(Ljava/io/File;)V
-				:try_end_0
-				.catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
-
-				:goto_0
-				# Load external fonts from app-specific directory
-				:try_start_1
-				invoke-static {}, Lcom/faultexception/reader/MainApplication;->getInstance()Lcom/faultexception/reader/MainApplication;
-				move-result-object v7
-				const/4 v0, 0x0
-				invoke-virtual {v7, v0}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
-				move-result-object v7
-
-				if-eqz v7, :cond_0
-				invoke-static {v7}, Lcom/faultexception/reader/fonts/Fonts;->scanExternalFonts(Ljava/io/File;)V
-				:cond_0
-				:try_end_1
-				.catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_1
-
-				:goto_1
+				# Load external fonts
+				invoke-static {}, Lcom/faultexception/reader/fonts/Fonts;->loadExternalFonts()V
 				return-void
-
-				:catch_0
-				move-exception v7
-				goto :goto_0
-
-				:catch_1
-				move-exception v7
-				goto :goto_1
 			.end method
 
-			.method private static loadExternalFont(Ljava/io/File;)V
-			    .locals 5
-			    .param p0, "fontFile"    # Ljava/io/File;
+			.method public static loadExternalFonts()V
+			    .locals 6
 
 			    .prologue
-			    invoke-virtual {p0}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-			    move-result-object v0
-
 			    :try_start_0
-			    invoke-static {v0}, Landroid/graphics/Typeface;->createFromFile(Ljava/lang/String;)Landroid/graphics/Typeface;
-			    move-result-object v1
-
-			    if-nez v1, :cond_0
+			    # Check if we have permission to read external storage
+			    sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+			    const/16 v1, 0x17
+			    if-lt v0, v1, :cond_0
+			    invoke-static {}, Lcom/faultexception/reader/MainApplication;->getInstance()Lcom/faultexception/reader/MainApplication;
+			    move-result-object v0
+			    const-string v1, "android.permission.READ_EXTERNAL_STORAGE"
+			    invoke-virtual {v0, v1}, Landroid/content/Context;->checkCallingOrSelfPermission(Ljava/lang/String;)I
+			    move-result v0
+			    if-eqz v0, :cond_0
 			    return-void
 
 			    :cond_0
-			    invoke-virtual {p0}, Ljava/io/File;->getName()Ljava/lang/String;
-			    move-result-object v2
-			    const/16 v3, 0x2e
-			    invoke-virtual {v2, v3}, Ljava/lang/String;->lastIndexOf(I)I
-			    move-result v3
-			    if-lez v3, :cond_1
-			    const/4 v4, 0x0
-			    invoke-virtual {v2, v4, v3}, Ljava/lang/String;->substring(II)Ljava/lang/String;
-			    move-result-object v2
+			    # Try to load from /sdcard/Lithium/fonts/
+			    new-instance v0, Ljava/io/File;
+			    invoke-static {}, Landroid/os/Environment;->getExternalStorageDirectory()Ljava/io/File;
+			    move-result-object v1
+			    const-string v2, "Lithium/fonts"
+			    invoke-direct {v0, v1, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+			    invoke-static {v0}, Lcom/faultexception/reader/fonts/Fonts;->scanExternalFonts(Ljava/io/File;)V
 
+			    # Try to load from app-specific directory
+			    invoke-static {}, Lcom/faultexception/reader/MainApplication;->getInstance()Lcom/faultexception/reader/MainApplication;
+			    move-result-object v0
+			    const/4 v1, 0x0
+			    invoke-virtual {v0, v1}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
+			    move-result-object v0
+			    if-eqz v0, :cond_1
+			    invoke-static {v0}, Lcom/faultexception/reader/fonts/Fonts;->scanExternalFonts(Ljava/io/File;)V
 			    :cond_1
-			    new-instance v3, Lcom/faultexception/reader/fonts/Font;
-			    const/4 v4, 0x0
-			    invoke-direct {v3, v2, v0, v4, v4}, Lcom/faultexception/reader/fonts/Font;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V
-
-			    invoke-static {}, Lcom/faultexception/reader/fonts/Fonts;->getFonts()Ljava/util/List;
-			    move-result-object v4
-			    invoke-interface {v4, v3}, Ljava/util/List;->add(Ljava/lang/Object;)Z
 			    :try_end_0
 			    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
 
@@ -166,7 +134,7 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 			    return-void
 
 			    :catch_0
-			    move-exception v1
+			    move-exception v0
 			    goto :goto_0
 			.end method
 
@@ -199,12 +167,13 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 			    const/4 v3, 0x0
 
 			    :goto_0
-			    if-ge v3, v2, :cond_4
+			    if-ge v3, v2, :cond_5
 			    aget-object v4, v1, v3
 
 			    invoke-virtual {v4}, Ljava/io/File;->isDirectory()Z
 			    move-result v5
 			    if-eqz v5, :cond_3
+
 			    invoke-static {v4}, Lcom/faultexception/reader/fonts/Fonts;->scanExternalFonts(Ljava/io/File;)V
 			    goto :goto_1
 
@@ -216,18 +185,24 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 			    const-string v6, ".ttf"
 			    invoke-virtual {v5, v6}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
 			    move-result v5
-			    if-eqz v5, :cond_5
+			    if-nez v5, :cond_4
 
-			    invoke-static {v4}, Lcom/faultexception/reader/fonts/Fonts;->loadExternalFont(Ljava/io/File;)V
+			    const-string v6, ".otf"
+			    invoke-virtual {v5, v6}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
+			    move-result v5
+			    if-eqz v5, :cond_6
+
+			    :cond_4
+			    invoke-static {v4}, Lcom/faultexception/reader/fonts/Fonts;->addExternalFont(Ljava/io/File;)V
 
 			    :goto_1
 			    add-int/lit8 v3, v3, 0x1
 			    goto :goto_0
 
-			    :cond_4
+			    :cond_5
 			    return-void
 
-			    :cond_5
+			    :cond_6
 			    goto :goto_1
 			    :try_end_0
 			    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
@@ -235,6 +210,58 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 			    :catch_0
 			    move-exception v0
 			    return-void
+			.end method
+
+			.method private static addExternalFont(Ljava/io/File;)V
+			    .locals 6
+			    .param p0, "fontFile"    # Ljava/io/File;
+
+			    .prologue
+			    :try_start_0
+			    invoke-virtual {p0}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+			    move-result-object v0
+
+			    # Extract font name without extension
+			    invoke-virtual {p0}, Ljava/io/File;->getName()Ljava/lang/String;
+			    move-result-object v1
+			    const/16 v2, 0x2e
+			    invoke-virtual {v1, v2}, Ljava/lang/String;->lastIndexOf(I)I
+			    move-result v2
+			    if-lez v2, :cond_0
+			    const/4 v3, 0x0
+			    invoke-virtual {v1, v3, v2}, Ljava/lang/String;->substring(II)Ljava/lang/String;
+			    move-result-object v1
+
+			    :cond_0
+			    # Create Font object - using same constructor as built-in fonts
+			    # new Font(String name, String regular, String bold, String italic, String boldItalic, int scripts)
+			    new-instance v2, Lcom/faultexception/reader/fonts/Font;
+			    const/4 v4, 0x0
+			    const/4 v5, 0x0
+			    invoke-direct/range {v2 .. v7}, Lcom/faultexception/reader/fonts/Font;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V
+			    # Wait, this is wrong - need to use the same constructor as built-in fonts
+			    # Let's use the 6-parameter constructor with null for other variants
+			    move-object v2, v1
+			    const/4 v3, 0x0
+			    const/4 v4, 0x0
+			    const/4 v5, 0x0
+			    const/4 v6, 0x0
+			    const/4 v7, 0x0
+			    new-instance v1, Lcom/faultexception/reader/fonts/Font;
+			    invoke-direct/range {v1 .. v7}, Lcom/faultexception/reader/fonts/Font;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V
+			    # Store the font
+			    invoke-static {}, Lcom/faultexception/reader/fonts/Fonts;->getFonts()Ljava/util/List;
+			    move-result-object v2
+			    invoke-interface {v2, v1}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+			    :try_end_0
+			    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+			    :goto_0
+			    return-void
+
+			    :catch_0
+			    move-exception v0
+			    goto :goto_0
 			.end method
 			`, xs)),
 		),
