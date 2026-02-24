@@ -28,7 +28,6 @@ jobs:
       - name: Download app
         run: go generate ./app
       - name: Download dictionaries
-        run: go generate ./dict/edgedict
         continue-on-error: true
       - name: Patch app
         run: go run . app/*.apk
